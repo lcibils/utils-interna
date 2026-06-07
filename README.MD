@@ -1,6 +1,6 @@
 # utils-interna
 
-Utilidades internas del equipo de desarrollo del MIEM. Actualmente incluye autenticación y autorización contra Active Directory.
+Utilidades internas del equipo de desarrollo del MIEM. Incluye autenticación AD, logging con rotación, envío de correos, notificaciones a Teams, gestión de tickets en Redmine y consulta de datos de persona vía DNIC.
 
 ---
 
@@ -22,6 +22,7 @@ utils-interna @ git+https://git.miem.gub.uy/infra/utils-interna.git
 - `pycryptodome>=3.0` (requerido por ldap3 para autenticación NTLM)
 - `python-dotenv>=1.0`
 - `structlog>=24.0`
+- `requests>=2.28`
 
 ---
 
@@ -560,6 +561,109 @@ result = create_issue(
 | `401`  | API key incorrecta o no enviada                                                |
 | `400`  | Nombre de proyecto, tracker, prioridad o estado no existe en Redmine           |
 | `500`  | Error interno del servidor o caché de metadatos no inicializado                |
+
+---
+
+## Módulo `dnic` — Consulta de datos de persona por cédula
+
+Consulta datos de identificación personal (nombre, apellidos, fecha de nacimiento, etc.) a partir de un número de documento, via la API interna DNIC del MIEM. La API actúa como proxy seguro hacia el WebService SOAP de DNIC de Producción.
+
+> **ADVERTENCIA:** Impacta contra el WebService de DNIC de Producción. Usar con criterio.  
+> **No apta** para aplicaciones expuestas a la ciudadanía (esas deben consumir el conector directamente gestionando la autorización con AGESIC/DNIC).
+
+### Configuración
+
+```ini
+# .env
+DNIC_API_SECRET=tu_clave_secreta_hmac   # solicitar al Área de Infraestructura MIEM
+DNIC_API_URL=https://automatizacion.miem.gub.uy/api/dnic   # valor por defecto
+DNIC_VERIFY_SSL=false   # false para certificados internos
+```
+
+`DNIC_API_URL` ya tiene el valor por defecto incorporado. Solo es necesario definirlo en `.env` si la URL cambia.
+
+### Verificar número de secuencia
+
+```python
+from utils_interna import get_sequence
+
+seq = get_sequence()
+if seq is not None:
+    print(f"Última secuencia procesada: {seq}")
+    print(f"Próxima a usar: {seq + 1}")
+```
+
+### Consultar datos de una persona
+
+```python
+from dotenv import load_dotenv
+load_dotenv()
+
+from utils_interna import query_person
+
+datos = query_person("43146984")
+
+if datos:
+    print(f"Nombre:     {datos['nombre1']} {datos.get('nombre2', '')}".strip())
+    print(f"Apellidos:  {datos['primerApellido']} {datos.get('segundoApellido', '')}".strip())
+    print(f"Sexo:       {datos['sexo']}")
+    print(f"Nacimiento: {datos['fechaNacimiento']}")
+else:
+    print("Documento no encontrado o error de conexión — revisar logs")
+```
+
+`query_person` obtiene automáticamente el número de secuencia actual del servidor e incrementa en 1 antes de cada llamada. No es necesario gestionar la secuencia manualmente.
+
+### Configuración explícita (sin variables de entorno)
+
+```python
+from utils_interna import query_person, DnicConfig
+
+config = DnicConfig(
+    secret_key="mi_clave_hmac",
+    verify_ssl=False,
+    timeout=15,
+)
+
+datos = query_person("43146984", config=config)
+```
+
+### Referencia de tipos
+
+#### `DnicConfig`
+
+| Campo        | Tipo   | Variable de entorno | Default                                           | Descripción                          |
+|--------------|--------|---------------------|---------------------------------------------------|--------------------------------------|
+| `api_url`    | `str`  | `DNIC_API_URL`      | `https://automatizacion.miem.gub.uy/api/dnic`    | URL base de la API                   |
+| `secret_key` | `str`  | `DNIC_API_SECRET`   | —                                                 | Clave secreta HMAC (requerida)       |
+| `verify_ssl` | `bool` | `DNIC_VERIFY_SSL`   | `false`                                           | Verificar certificado SSL            |
+| `timeout`    | `int`  | —                   | `10`                                              | Timeout de conexión en segundos      |
+
+#### Campos de respuesta de `query_person`
+
+| Campo              | Tipo           | Descripción                          |
+|--------------------|----------------|--------------------------------------|
+| `Nrodocumento`     | `str`          | Número de documento consultado       |
+| `codTipoDocumento` | `str`          | Código de tipo de documento          |
+| `nombre1`          | `str`          | Primer nombre                        |
+| `nombre2`          | `str`          | Segundo nombre                       |
+| `primerApellido`   | `str`          | Primer apellido                      |
+| `segundoApellido`  | `str`          | Segundo apellido                     |
+| `sexo`             | `str`          | `"masculino"` / `"femenino"`         |
+| `fechaNacimiento`  | `str`          | Fecha en formato `YYYY-MM-DD`        |
+| `codNacionalidad`  | `str`          | Descripción de nacionalidad          |
+| `nombreEnCedula`   | `str`          | Nombre completo tal como figura en cédula |
+| `advertencias`     | `list`         | Lista de advertencias (puede ser vacía) |
+
+### Códigos de respuesta del servicio
+
+| Código | Significado                                                              |
+|--------|--------------------------------------------------------------------------|
+| `200`  | Consulta procesada correctamente (`query_person` retorna el dict)        |
+| `400`  | Falta el campo `Nrodocumento` o el formato es incorrecto                 |
+| `401`  | Firma HMAC inválida o número de secuencia repetido                       |
+| `404`  | Documento no registrado o sin datos disponibles (`query_person` retorna `None`) |
+| `500`  | Falla temporal o error del servicio externo                              |
 
 ---
 
