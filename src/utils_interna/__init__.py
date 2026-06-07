@@ -2,6 +2,7 @@ from .auth import login, logout, is_member_of, ADConfig, AuthResult, UserInfo
 from .logger import get_logger, log, setup_logging, log_operation, log_api_call, log_system_status
 from .mailer import send_notification_email, MailConfig
 from .teams import send_notification_teams, TeamsConfig
+from .redmine import create_issue, get_metadata, get_field_mappings, attach_file, RedmineConfig, IssueResult
 
 __all__ = [
     # auth
@@ -24,4 +25,11 @@ __all__ = [
     # teams
     "send_notification_teams",
     "TeamsConfig",
+    # redmine
+    "create_issue",
+    "get_metadata",
+    "get_field_mappings",
+    "attach_file",
+    "RedmineConfig",
+    "IssueResult",
 ]

@@ -434,6 +434,135 @@ send_notification_teams("usuario@miem.gub.uy", "Mensaje de prueba", config=confi
 
 ---
 
+## Módulo `redmine` — Creación de tickets en Redmine
+
+Wrapper sobre la API friendly MIEM que permite crear tickets usando nombres legibles ("Infraestructura", "Tarea") en lugar de IDs internos de Redmine.
+
+### Configuración
+
+```ini
+# .env
+REDMINE_API_KEY=tu_api_key_de_redmine   # solicitar al equipo de Infraestructura
+REDMINE_API_URL=https://automatizacion.miem.gub.uy/api/v1   # valor por defecto
+REDMINE_VERIFY_SSL=false   # false para certificados internos
+```
+
+### Consultar metadatos (nombres válidos)
+
+Antes de crear tickets se recomienda consultar los nombres disponibles. No requiere API key.
+
+```python
+from utils_interna import get_metadata
+
+meta = get_metadata()
+if meta:
+    print("Proyectos:", meta["projects"])
+    print("Trackers:", meta["trackers"])
+    print("Prioridades:", meta["priorities"])
+    print("Estados:", meta["status"])
+```
+
+### Consultar mapeo de campos personalizados
+
+```python
+from utils_interna import get_field_mappings
+
+mappings = get_field_mappings()
+for campo in mappings:
+    print(campo["name"], "->", campo["asociado_a_proyectos"])
+```
+
+### Crear un ticket
+
+```python
+from dotenv import load_dotenv
+load_dotenv()
+
+from utils_interna import create_issue
+
+result = create_issue(
+    project="Infraestructura",
+    tracker="Tarea",
+    priority="Alta",
+    status="Nueva",
+    subject="Falla detectada en backup de base de datos",
+    description="El job de las 03:00 AM falló con error de timeout.",
+)
+
+if result.success:
+    print(f"Ticket creado: {result.url}")
+    print(f"ID Redmine: {result.redmine_id}")
+else:
+    print(f"Error: {result.error}")
+```
+
+### Ticket con campos personalizados
+
+```python
+result = create_issue(
+    project="Infraestructura",
+    tracker="Error",
+    priority="Urgente",
+    status="Nueva",
+    subject="Caída del servicio de autenticación",
+    custom_fields=[
+        {"name": "Sistema Afectado", "value": "Core Bancario"},
+        {"name": "Nivel de Impacto",  "value": "Crítico"},
+    ],
+)
+```
+
+### Ticket con archivo adjunto
+
+```python
+from utils_interna import create_issue, attach_file
+
+result = create_issue(
+    project="Infraestructura",
+    tracker="Tarea",
+    priority="Normal",
+    status="Nueva",
+    subject="Envío de reporte semanal",
+    attachments=[
+        attach_file("reporte.pdf", "application/pdf"),
+        attach_file("logs.txt", "text/plain"),
+    ],
+)
+```
+
+`attach_file(filepath, content_type=None)` lee el archivo y retorna el dict Base64 listo para usar.
+
+### Referencia de tipos
+
+#### `RedmineConfig`
+
+| Campo        | Tipo   | Variable de entorno | Default                                           | Descripción                           |
+|--------------|--------|---------------------|---------------------------------------------------|---------------------------------------|
+| `api_url`    | `str`  | `REDMINE_API_URL`   | `https://automatizacion.miem.gub.uy/api/v1`      | URL base de la API                    |
+| `api_key`    | `str`  | `REDMINE_API_KEY`   | —                                                 | Clave de acceso (requerida para POST) |
+| `verify_ssl` | `bool` | `REDMINE_VERIFY_SSL`| `false`                                           | Verificar certificado SSL             |
+| `timeout`    | `int`  | —                   | `30`                                              | Timeout en segundos (para adjuntos grandes) |
+
+#### `IssueResult`
+
+| Campo        | Tipo           | Descripción                                         |
+|--------------|----------------|-----------------------------------------------------|
+| `success`    | `bool`         | `True` si el ticket fue creado correctamente        |
+| `redmine_id` | `int \| None`  | ID del ticket en Redmine. `None` si `success=False` |
+| `url`        | `str \| None`  | URL directa al ticket. `None` si `success=False`    |
+| `error`      | `str \| None`  | Mensaje de error. `None` si `success=True`          |
+
+### Códigos de respuesta del servicio
+
+| Código | Significado                                                                    |
+|--------|--------------------------------------------------------------------------------|
+| `201`  | Ticket creado correctamente (`create_issue` retorna `IssueResult(success=True)`) |
+| `401`  | API key incorrecta o no enviada                                                |
+| `400`  | Nombre de proyecto, tracker, prioridad o estado no existe en Redmine           |
+| `500`  | Error interno del servidor o caché de metadatos no inicializado                |
+
+---
+
 ## Desarrollo local
 
 ```bash
