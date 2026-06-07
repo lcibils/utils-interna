@@ -367,6 +367,73 @@ send_notification_email("dest@subsidiaria.local", "Asunto", "Cuerpo", config=con
 
 ---
 
+## Módulo `teams` — Notificaciones a Microsoft Teams
+
+Envía mensajes a un canal de Teams vía el servicio centralizado MIEM. El servicio gestiona la autenticación contra Azure automáticamente; el cliente no necesita credenciales de Azure.
+
+> **Uso interno exclusivamente.** El servicio no debe estar expuesto a internet.
+
+### Configuración
+
+```ini
+# .env
+TEAMS_API_URL=https://automatizacion.miem.gub.uy/enviar-a-teams  # valor por defecto
+TEAMS_VERIFY_SSL=true
+```
+
+`TEAMS_API_URL` ya tiene el valor por defecto incorporado, por lo que solo es necesario definirlo en `.env` si la URL cambia.
+
+### Uso básico
+
+```python
+from dotenv import load_dotenv
+load_dotenv()
+
+from utils_interna import send_notification_teams
+
+ok = send_notification_teams(
+    "usuario@miem.gub.uy",
+    "El expediente Nro. 1234 fue aprobado.",
+)
+
+if not ok:
+    print("Error al enviar la notificación — revisar logs")
+```
+
+### Configuración explícita (sin variables de entorno)
+
+```python
+from utils_interna import send_notification_teams, TeamsConfig
+
+config = TeamsConfig(
+    api_url="https://automatizacion.miem.gub.uy/enviar-a-teams",
+    verify_ssl=True,
+    timeout=15,
+)
+
+send_notification_teams("usuario@miem.gub.uy", "Mensaje de prueba", config=config)
+```
+
+### Referencia de tipos
+
+#### `TeamsConfig`
+
+| Campo        | Tipo   | Variable de entorno | Default                                              | Descripción                          |
+|--------------|--------|---------------------|------------------------------------------------------|--------------------------------------|
+| `api_url`    | `str`  | `TEAMS_API_URL`     | `https://automatizacion.miem.gub.uy/enviar-a-teams` | URL del endpoint del servicio        |
+| `verify_ssl` | `bool` | `TEAMS_VERIFY_SSL`  | `true`                                               | Verificar certificado SSL            |
+| `timeout`    | `int`  | —                   | `10`                                                 | Timeout de conexión en segundos      |
+
+### Códigos de respuesta del servicio
+
+| Código | Significado                                                                 |
+|--------|-----------------------------------------------------------------------------|
+| `202`  | Notificación aceptada y en proceso (`send_notification_teams` retorna `True`) |
+| `400`  | Payload inválido o parámetros faltantes                                     |
+| `503`  | Servicio temporalmente no disponible — reintentar en unos segundos          |
+
+---
+
 ## Desarrollo local
 
 ```bash
