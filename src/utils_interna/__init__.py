@@ -3,6 +3,7 @@ from .logger import get_logger, log, setup_logging, log_operation, log_api_call,
 from .mailer import send_notification_email, MailConfig
 from .teams import send_notification_teams, TeamsConfig
 from .redmine import create_issue, get_metadata, get_field_mappings, attach_file, RedmineConfig, IssueResult
+from .dnic import query_person, get_sequence, DnicConfig
 
 __all__ = [
     # auth
@@ -32,4 +33,8 @@ __all__ = [
     "attach_file",
     "RedmineConfig",
     "IssueResult",
+    # dnic
+    "query_person",
+    "get_sequence",
+    "DnicConfig",
 ]
