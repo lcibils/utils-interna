@@ -227,6 +227,7 @@ def get_field_mappings(config: Optional[RedmineConfig] = None) -> Optional[list]
     try:
         response = requests.post(
             f"{config.api_url}/mapeo-campos",
+            json={},
             verify=config.verify_ssl,
             timeout=config.timeout,
         )
