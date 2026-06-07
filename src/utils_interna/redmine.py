@@ -185,6 +185,7 @@ def get_metadata(config: Optional[RedmineConfig] = None) -> Optional[dict]:
     try:
         response = requests.get(
             f"{config.api_url}/metadata",
+            headers=_auth_headers(config),
             verify=config.verify_ssl,
             timeout=config.timeout,
         )
@@ -228,6 +229,7 @@ def get_field_mappings(config: Optional[RedmineConfig] = None) -> Optional[list]
         response = requests.post(
             f"{config.api_url}/mapeo-campos",
             json={},
+            headers=_auth_headers(config),
             verify=config.verify_ssl,
             timeout=config.timeout,
         )
@@ -272,6 +274,14 @@ def attach_file(filepath: str, content_type: Optional[str] = None) -> dict:
 # ---------------------------------------------------------------------------
 # Privado
 # ---------------------------------------------------------------------------
+
+def _auth_headers(config: RedmineConfig) -> dict:
+    """Construye los headers con X-API-KEY cuando está disponible."""
+    headers = {"Content-Type": "application/json"}
+    if config.api_key:
+        headers["X-API-KEY"] = config.api_key
+    return headers
+
 
 def _extract_error(response: requests.Response) -> str:
     """Extrae el mensaje de error de la respuesta HTTP."""
