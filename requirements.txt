@@ -2,3 +2,8 @@ ldap3>=2.9
 pycryptodome>=3.0
 structlog>=24.0
 python-dotenv>=1.0
+requests>=2.28
+
+
+# git+https://git.miem.gub.uy/infra/utils-interna.git 
+git+https://github.com/lcibils/utils-interna.git

@@ -251,6 +251,122 @@ def do_login():
 
 ---
 
+## Módulo `logger` — Logging con rotación de archivos
+
+### Configuración
+
+```ini
+# .env  (no se requieren variables para logging, la configuración es en código)
+```
+
+### Inicializar el sistema de logging
+
+Llamar a `setup_logging` una sola vez al arrancar la aplicación:
+
+```python
+from utils_interna import setup_logging
+
+setup_logging(
+    log_file_path="logs/app.log",   # ruta del archivo (el directorio se crea si no existe)
+    log_level="INFO",               # DEBUG | INFO | WARNING | ERROR | CRITICAL
+    max_file_size="10MB",           # rotar cuando el archivo supere este tamaño
+    console_logging=True,           # también imprimir en consola
+    backup_count=10,                # cantidad de archivos de backup
+)
+```
+
+Después de esto, todos los loggers de stdlib (incluidos los de `auth.py`) y los nuevos helpers escriben al archivo.
+
+### Logger estructurado (`get_logger` / `log`)
+
+```python
+from utils_interna import get_logger, log
+
+logger = get_logger(__name__)
+logger.info("user_login", user="jdoe", ip="10.0.0.1")
+
+# o en un solo llamado:
+log("warning", "acceso_denegado", user="jdoe", grupo="GRP_ADMINS")
+```
+
+### Helpers de auditoría
+
+```python
+from utils_interna import log_operation, log_api_call, log_system_status
+
+# Auditar una operación CRUD
+log_operation("ADD", expediente_id=1234, success=True, details="Creado vía API")
+log_operation("DELETE", expediente_id=99, success=False, details="Registro no encontrado")
+
+# Trazar llamadas a APIs externas
+log_api_call("POST", "/api/expedientes", success=True, response_time=0.45)
+log_api_call("GET",  "/api/usuarios",    success=False, error="Timeout")
+
+# Reportar estado de componentes
+log_system_status("DATABASE",   "OK")
+log_system_status("WEBSERVICE", "WARNING", details="Latencia alta: 3.2s")
+log_system_status("CORREO",     "ERROR",   details="Conexión rechazada")
+```
+
+---
+
+## Módulo `mailer` — Envío de correos vía API MIEM-MailSender
+
+### Configuración
+
+```ini
+# .env
+MAIL_API_URL=https://mailsender.empresa.local/api/send
+MAIL_API_SECRET=tu_clave_secreta
+MAIL_VERIFY_SSL=false   # false para APIs internas con certificado self-signed
+```
+
+### Uso básico
+
+```python
+from dotenv import load_dotenv
+load_dotenv()
+
+from utils_interna import send_notification_email
+
+enviado = send_notification_email(
+    "usuario@empresa.local",
+    "Asunto del correo",
+    "El expediente Nro. 1234 fue aprobado.",
+)
+
+if not enviado:
+    print("Error al enviar el correo — revisar logs")
+```
+
+### Configuración explícita (sin variables de entorno)
+
+```python
+from utils_interna import send_notification_email, MailConfig
+
+config = MailConfig(
+    api_url="https://mailsender.subsidiaria.local/api/send",
+    secret_key="clave_subsidiaria",
+    verify_ssl=False,
+    timeout=15,
+)
+
+send_notification_email("dest@subsidiaria.local", "Asunto", "Cuerpo", config=config)
+```
+
+### Referencia de tipos
+
+#### `MailConfig`
+
+| Campo        | Tipo   | Variable de entorno | Default | Descripción                                      |
+|--------------|--------|---------------------|---------|--------------------------------------------------|
+| `api_url`    | `str`  | `MAIL_API_URL`      | —       | URL del endpoint de la API de correo             |
+| `secret_key` | `str`  | `MAIL_API_SECRET`   | —       | Clave secreta para firma HMAC-SHA256             |
+| `verify_ssl` | `bool` | `MAIL_VERIFY_SSL`   | `false` | Verificar certificado SSL (false para APIs internas) |
+| `timeout`    | `int`  | —                   | `10`    | Timeout de conexión en segundos                  |
+
+---
+
 ## Desarrollo local
 
 ```bash
