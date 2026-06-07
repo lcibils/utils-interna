@@ -5,7 +5,7 @@ Wrapper sobre la API friendly de Redmine (MIEM).
 Permite crear tickets usando nombres legibles en lugar de IDs internos.
 
 Variables de entorno (o pasar explícitamente via RedmineConfig):
-    REDMINE_API_KEY    - Clave de acceso (requerida para crear tickets)
+    REDMINE_API_KEY    - Clave de acceso (requerida en todas las peticiones)
     REDMINE_API_URL    - URL base de la API (default: https://automatizacion.miem.gub.uy/api/v1)
     REDMINE_VERIFY_SSL - Verificar certificado SSL (default: false, certificados internos)
 """
@@ -162,8 +162,6 @@ def get_metadata(config: Optional[RedmineConfig] = None) -> Optional[dict]:
     Consulta los nombres válidos de proyectos, trackers, prioridades, estados
     y campos personalizados disponibles en Redmine.
 
-    No requiere autenticación.
-
     Args:
         config: Instancia de RedmineConfig. Si es None, usa variables de entorno.
 
@@ -204,9 +202,7 @@ def get_metadata(config: Optional[RedmineConfig] = None) -> Optional[dict]:
 def get_field_mappings(config: Optional[RedmineConfig] = None) -> Optional[list]:
     """
     Consulta el mapeo de campos personalizados a proyectos de Redmine.
-
-    No requiere autenticación. Útil para determinar qué campos personalizados
-    están disponibles para cada proyecto antes de crear un ticket.
+    Útil para determinar qué campos están disponibles antes de crear un ticket.
 
     Args:
         config: Instancia de RedmineConfig. Si es None, usa variables de entorno.
